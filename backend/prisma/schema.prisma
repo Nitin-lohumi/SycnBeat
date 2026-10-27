@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =====================================================
+// ENUMS
+// =====================================================
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum RoomRole {
+  ADMIN
+  DJ
+  LISTENER
+}
+
+enum TrackSource {
+  YOUTUBE
+  JAMENDO
+  UPLOAD
+}
+
+enum NotificationType {
+  FRIEND_ACCEPTED
+  FRIEND_REMOVED
+}
+
+// =====================================================
+// USER + AUTH
+// =====================================================
+
+model User {
+  id         String    @id @default(cuid())
+  googleId   String    @unique
+  email      String    @unique
+  name       String
+  username   String    @unique
+  avatarUrl  String?
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // friends
+  sentFriendRequests     Friendship[] @relation("FriendshipSender")
+  receivedFriendRequests Friendship[] @relation("FriendshipReceiver")
+
+  // personal playlists
+  playlists Playlist[]
+
+  // rooms
+  ownedRooms          Room[]       @relation("RoomOwner")
+  roomMemberships     RoomMember[]
+  sentRoomInvites     RoomInvite[] @relation("RoomInviteSender")
+  receivedRoomInvites RoomInvite[] @relation("RoomInviteReceiver")
+  addedRoomTracks     RoomTrack[]
+
+  // 1:1 chat
+  conversationsAsA Conversation[]  @relation("ConversationUserA")
+  conversationsAsB Conversation[]  @relation("ConversationUserB")
+  directMessages   DirectMessage[]
+
+  // notifications
+  notifications      Notification[] @relation("NotificationUser")
+  actedNotifications Notification[] @relation("NotificationActor")
+}
+
+
+// =====================================================
+// FRIENDS
+// =====================================================
+
+model Friendship {
+  id         String           @id @default(cuid())
+  senderId   String // kisne bheja
+  receiverId String // kisko mila
+  userLowId  String // sortPair: chhoti id
+  userHighId String // sortPair: badi id
+  status     FriendshipStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  sender   User @relation("FriendshipSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("FriendshipReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([userLowId, userHighId]) 
+  @@index([receiverId, status])
+  @@index([senderId, status])
+}
+
+// =====================================================
+// NOTIFICATIONS 
+// =====================================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String // kisko dikhegi
+  actorId   String // kisne kiya (jaise jisne request accept ki)
+  type      NotificationType
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user  User @relation("NotificationUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor User @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+// =====================================================
+// TRACK 
+// =====================================================
+
+model Track {
+  id           String      @id @default(cuid())
+  source       TrackSource
+  sourceId     String // youtube id / jamendo id / cloudinary public id
+  title        String
+  artist       String?
+  durationSec  Int
+  thumbnailUrl String?
+  createdAt    DateTime    @default(now())
+
+  playlistTracks PlaylistTrack[]
+  roomTracks     RoomTrack[]
+
+  @@unique([source, sourceId]) // same gaana ek hi baar save
+}
+
+// =====================================================
+// PERSONAL PLAYLIST 
+// =====================================================
+
+model Playlist {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  coverUrl    String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner  User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tracks PlaylistTrack[]
+
+  @@index([ownerId])
+}
+
+model PlaylistTrack {
+  id         String   @id @default(cuid())
+  playlistId String
+  trackId    String
+  position   Int
+  addedAt    DateTime @default(now())
+
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([playlistId, position])
+}
+
+// =====================================================
+// ROOM (shared listening)
+// =====================================================
+
+model Room {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  coverUrl    String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner   User         @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members RoomMember[]
+  invites RoomInvite[]
+  tracks  RoomTrack[]
+
+  @@index([ownerId])
+}
+
+model RoomMember {
+  roomId   String
+  userId   String
+  role     RoomRole @default(LISTENER)
+  joinedAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@index([userId]) 
+}
+
+model RoomInvite {
+  id         String       @id @default(cuid())
+  roomId     String
+  senderId   String
+  receiverId String
+  role       RoomRole     @default(LISTENER) // kis role ke saath bulaya
+  status     InviteStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  room     Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender   User @relation("RoomInviteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("RoomInviteReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, receiverId]) // ek room ka ek user ko ek hi invite
+  @@index([receiverId, status])
+}
+
+model RoomTrack {
+  id        String   @id @default(cuid())
+  roomId    String
+  trackId   String
+  addedById String?
+  position  Int
+  addedAt   DateTime @default(now())
+
+  room    Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  track   Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  addedBy User? @relation(fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@index([roomId, position])
+}
+
+// =====================================================
+// 1:1 CHAT (real time + DB mein save)
+// =====================================================
+
+model Conversation {
+  id            String    @id @default(cuid())
+  userAId       String // sortPair: chhoti id
+  userBId       String // sortPair: badi id
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  userA    User            @relation("ConversationUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB    User            @relation("ConversationUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages DirectMessage[]
+
+  @@unique([userAId, userBId])
+  @@index([userBId])
+}
+
+model DirectMessage {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
