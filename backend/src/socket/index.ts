@@ -10,6 +10,7 @@ export interface ServerToClientEvents {
   "friend:request:removed": (data: { requestId: string }) => void;
   "friends:changed": () => void;
   "notification:new": (data: { id: string; type: string; actor: PublicUser; createdAt: Date }) => void;
+  "library:changed": () => void;
 }
 
 type ClientToServerEvents = Record<string, never>;

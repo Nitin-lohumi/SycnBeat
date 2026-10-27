@@ -92,25 +92,30 @@ export async function acceptFriendRequest(me: string, requestId: string) {
   });
   if (!request) throw new AppError(404, "Request not found");
 
-  const notification = await prisma.$transaction(async (tx) => {
-    // Conditional update: sirf tab jab abhi bhi PENDING ho aur receiver main hu.
-    // Do tabs se ek saath accept kiya to sirf ek ka count 1 aayega -> double notification nahi
+  const [toSender, toMe] = await prisma.$transaction(async (tx) => {
+    // Conditional update: if two tabs accept at once, only one gets count 1.
     const { count } = await tx.friendship.updateMany({
       where: { id: requestId, receiverId: me, status: "PENDING" },
       data: { status: "ACCEPTED" },
     });
     if (count === 0) throw new AppError(404, "Request not found");
 
-    return tx.notification.create({
+    const toSender = await tx.notification.create({
       data: { userId: request.senderId, actorId: me, type: "FRIEND_ACCEPTED" },
       select: notificationSelect,
     });
+    const toMe = await tx.notification.create({
+      data: { userId: me, actorId: request.senderId, type: "YOU_ADDED_FRIEND", readAt: new Date() },
+      select: notificationSelect,
+    });
+    return [toSender, toMe] as const;
   });
 
   const both = [me, request.senderId];
   emitToUsers(both, "friend:request:removed", { requestId });
   emitToUsers(both, "friends:changed");
-  emitToUsers(request.senderId, "notification:new", notification);
+  emitToUsers(request.senderId, "notification:new", toSender);
+  emitToUsers(me, "notification:new", toMe);
 }
 
 // Receiver ke liye "reject", sender ke liye "cancel" — dono mein row delete
@@ -136,18 +141,25 @@ export async function removeFriendRequest(me: string, requestId: string) {
 }
 
 export async function removeFriend(me: string, friendId: string) {
-  const notification = await prisma.$transaction(async (tx) => {
+  const [forFriend, forMe] = await prisma.$transaction(async (tx) => {
     const { count } = await tx.friendship.deleteMany({
       where: { ...sortPair(me, friendId), status: "ACCEPTED" },
     });
     if (count === 0) throw new AppError(404, "Not friends");
 
-    return tx.notification.create({
+    const toFriend = await tx.notification.create({
       data: { userId: friendId, actorId: me, type: "FRIEND_REMOVED" },
       select: notificationSelect,
     });
+    // Pre-marked as read so it shows in my history without bumping my badge.
+    const toMe = await tx.notification.create({
+      data: { userId: me, actorId: friendId, type: "YOU_REMOVED_FRIEND", readAt: new Date() },
+      select: notificationSelect,
+    });
+    return [toFriend, toMe] as const;
   });
 
   emitToUsers([me, friendId], "friends:changed");
-  emitToUsers(friendId, "notification:new", notification);
+  emitToUsers(friendId, "notification:new", forFriend);
+  emitToUsers(me, "notification:new", forMe);
 }

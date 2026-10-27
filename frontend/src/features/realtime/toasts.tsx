@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { HiXMark } from "react-icons/hi2";
 import { toast } from "sonner";
+import Spinner from "../../components/common/Spinner";
 import UserAvatar from "../../components/UserAvatar";
 import type { PublicUser } from "../../types/user";
 import { useAcceptFriendRequest, useDeleteFriendRequest } from "../friends/hooks";
@@ -42,7 +43,8 @@ function ToastCard({ toastId, user, children, actions }: CardProps) {
 function FriendRequestToast({ toastId, request }: { toastId: string | number; request: FriendRequest }) {
   const accept = useAcceptFriendRequest();
   const reject = useDeleteFriendRequest();
-  const vars = { requestId: request.id, userId: request.user.id };
+  const busy = accept.isPending || reject.isPending;
+  const close = { onSettled: () => toast.dismiss(toastId) };
 
   return (
     <ToastCard
@@ -51,23 +53,19 @@ function FriendRequestToast({ toastId, request }: { toastId: string | number; re
       actions={
         <>
           <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              accept.mutate({ ...vars, user: request.user });
-              toast.dismiss(toastId);
-            }}
-            className="h-7 rounded-full bg-linear-to-r from-violet-500 to-fuchsia-500 px-3.5 text-xs font-medium text-white"
+            whileTap={busy ? undefined : { scale: 0.95 }}
+            disabled={busy}
+            onClick={() => accept.mutate(request.id, close)}
+            className="flex h-7 min-w-18 items-center justify-center rounded-full bg-linear-to-r from-violet-500 to-fuchsia-500 px-3.5 text-xs font-medium text-white disabled:opacity-70"
           >
-            Accept
+            {accept.isPending ? <Spinner className="size-3" /> : "Accept"}
           </motion.button>
           <button
-            onClick={() => {
-              reject.mutate({ ...vars, incoming: true });
-              toast.dismiss(toastId);
-            }}
-            className="h-7 rounded-full bg-white/5 px-3.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+            disabled={busy}
+            onClick={() => reject.mutate(request.id, close)}
+            className="flex h-7 min-w-18 items-center justify-center rounded-full bg-white/5 px-3.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
           >
-            Decline
+            {reject.isPending ? <Spinner className="size-3" /> : "Decline"}
           </button>
         </>
       }

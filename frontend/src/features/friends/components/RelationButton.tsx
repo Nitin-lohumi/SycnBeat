@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { HiCheck, HiOutlineUserPlus, HiUserGroup } from "react-icons/hi2";
+import Spinner from "../../../components/common/Spinner";
 import { cn } from "../../../lib/utils";
 import { useAcceptFriendRequest, useDeleteFriendRequest, useSendFriendRequest } from "../hooks";
 import type { SearchUser } from "../types";
@@ -25,17 +26,16 @@ export default function RelationButton({ user }: { user: SearchUser }) {
 
   function onClick() {
     if (busy) return;
-    const requestId = user.requestId;
     if (user.status === "NONE") send.mutate(user.id);
-    else if (user.status === "INCOMING" && requestId) accept.mutate({ requestId, userId: user.id, user });
-    else if (user.status === "OUTGOING" && requestId)
-      remove.mutate({ requestId, userId: user.id, incoming: false });
+    else if (user.status === "INCOMING" && user.requestId) accept.mutate(user.requestId);
+    else if (user.status === "OUTGOING" && user.requestId) remove.mutate(user.requestId);
   }
 
   return (
     <motion.button
-      whileTap={user.status === "FRIENDS" ? undefined : { scale: 0.92 }}
+      whileTap={user.status === "FRIENDS" || busy ? undefined : { scale: 0.92 }}
       onClick={onClick}
+      disabled={busy}
       title={user.status === "OUTGOING" ? "Cancel request" : undefined}
       className={cn(
         "flex h-8 w-27 items-center justify-center overflow-hidden rounded-full text-xs font-medium transition-colors",
@@ -44,14 +44,20 @@ export default function RelationButton({ user }: { user: SearchUser }) {
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
-          key={user.status}
+          key={busy ? "busy" : user.status}
           initial={{ y: 12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -12, opacity: 0 }}
           transition={{ duration: 0.15 }}
           className="flex items-center gap-1"
         >
-          <v.icon className="size-3.5" /> {v.label}
+          {busy ? (
+            <Spinner className="size-3.5" />
+          ) : (
+            <>
+              <v.icon className="size-3.5" /> {v.label}
+            </>
+          )}
         </motion.span>
       </AnimatePresence>
     </motion.button>

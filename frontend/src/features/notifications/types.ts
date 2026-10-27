@@ -1,6 +1,10 @@
 import type { PublicUser } from "../../types/user";
 
-export type NotificationType = "FRIEND_ACCEPTED" | "FRIEND_REMOVED";
+export type NotificationType =
+  | "FRIEND_ACCEPTED"
+  | "FRIEND_REMOVED"
+  | "YOU_REMOVED_FRIEND"
+  | "YOU_ADDED_FRIEND";
 
 export interface AppNotification {
   id: string;

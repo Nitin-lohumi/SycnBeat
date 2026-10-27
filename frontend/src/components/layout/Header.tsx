@@ -41,7 +41,7 @@ export default function Header() {
       >
         <Container
           className={cn(
-            "flex items-center justify-between gap-4 transition-[height] duration-300 md:grid md:grid-cols-[1fr_auto_1fr]",
+            "flex max-w-[1920px] items-center justify-between gap-4 px-3 transition-[height] duration-300 sm:px-4 md:grid md:grid-cols-[1fr_auto_1fr] lg:px-6",
             scrolled ? "h-14" : "h-16 sm:h-18",
           )}
         >

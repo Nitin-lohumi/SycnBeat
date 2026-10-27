@@ -8,17 +8,11 @@ import {
   removeFriendRequest,
   sendFriendRequest,
 } from "../services/friend_service";
-import { AppError } from "../utils/AppError";
+import { parse } from "../utils/validate";
 
 const sendBody = z.object({ userId: z.string().min(1) });
 const idParam = z.object({ id: z.string().min(1) });
 const userIdParam = z.object({ userId: z.string().min(1) });
-
-function parse<T>(schema: z.ZodType<T>, data: unknown, message: string) {
-  const parsed = schema.safeParse(data);
-  if (!parsed.success) throw new AppError(400, message);
-  return parsed.data;
-}
 
 export async function getFriends(req: Request, res: Response) {
   res.json({ friends: await listFriends(req.userId!) });

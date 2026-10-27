@@ -137,6 +137,49 @@
   body {
     @apply bg-background text-foreground;
     }
+  /* Tailwind v4 dropped the default pointer cursor on buttons */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  label[for],
+  select,
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.12) padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(167 139 250 / 0.55) padding-box;
+  }
+  /* Firefox only: standard props would override the webkit styles in Chromium */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgb(255 255 255 / 0.15) transparent;
+    }
+  }
   html {
     @apply font-sans;
     }

@@ -5,4 +5,12 @@ export const qk = {
   userSearchAll: ["user-search"] as const,
   userSearch: (q: string) => ["user-search", q] as const,
   notifications: ["notifications"] as const,
+  trackSearch: (q: string) => ["track-search", q] as const,
+  library: ["library"] as const,
+  playlistAll: ["playlist"] as const,
+  playlist: (id: string) => ["playlist", id] as const,
+  liked: ["liked"] as const,
+  likedKeys: ["liked-keys"] as const,
+  membershipAll: ["membership"] as const,
+  membership: (key: string) => ["membership", key] as const,
 };

@@ -8,6 +8,7 @@ export interface ServerToClientEvents {
   "friend:request:removed": (data: { requestId: string }) => void;
   "friends:changed": () => void;
   "notification:new": (data: AppNotification) => void;
+  "library:changed": () => void;
 }
 
 export const socket: Socket<ServerToClientEvents> = io(import.meta.env.VITE_API_URL, {

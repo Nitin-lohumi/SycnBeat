@@ -39,6 +39,8 @@ enum TrackSource {
 enum NotificationType {
   FRIEND_ACCEPTED
   FRIEND_REMOVED
+  YOU_REMOVED_FRIEND
+  YOU_ADDED_FRIEND
 }
 
 // =====================================================
@@ -61,7 +63,8 @@ model User {
   receivedFriendRequests Friendship[] @relation("FriendshipReceiver")
 
   // personal playlists
-  playlists Playlist[]
+  playlists   Playlist[]
+  likedTracks LikedTrack[]
 
   // rooms
   ownedRooms          Room[]       @relation("RoomOwner")
@@ -134,10 +137,12 @@ model Track {
   artist       String?
   durationSec  Int
   thumbnailUrl String?
+  audioUrl     String? // null for sources without a direct stream (e.g. YouTube)
   createdAt    DateTime    @default(now())
 
   playlistTracks PlaylistTrack[]
   roomTracks     RoomTrack[]
+  likes          LikedTrack[]
 
   @@unique([source, sourceId]) // same gaana ek hi baar save
 }
@@ -171,7 +176,20 @@ model PlaylistTrack {
   playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
   track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
+  @@unique([playlistId, trackId])
   @@index([playlistId, position])
+}
+
+model LikedTrack {
+  userId  String
+  trackId String
+  likedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([userId, trackId])
+  @@index([userId, likedAt])
 }
 
 // =====================================================

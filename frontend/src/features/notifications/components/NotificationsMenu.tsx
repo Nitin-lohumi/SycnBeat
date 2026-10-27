@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { motion, type Variants } from "framer-motion";
-import { HiCheck, HiOutlineBell, HiOutlineBellSlash, HiUserMinus } from "react-icons/hi2";
+import { HiCheck, HiOutlineBell, HiOutlineBellSlash, HiUserMinus, HiUserPlus } from "react-icons/hi2";
 import EmptyState from "../../../components/common/EmptyState";
 import ErrorState from "../../../components/common/ErrorState";
 import { UserRowSkeleton } from "../../../components/common/Skeleton";
@@ -14,6 +14,8 @@ import type { AppNotification } from "../types";
 const TYPE_BADGE = {
   FRIEND_ACCEPTED: { icon: HiCheck, className: "bg-emerald-500" },
   FRIEND_REMOVED: { icon: HiUserMinus, className: "bg-neutral-600" },
+  YOU_REMOVED_FRIEND: { icon: HiUserMinus, className: "bg-neutral-600" },
+  YOU_ADDED_FRIEND: { icon: HiUserPlus, className: "bg-violet-500" },
 } as const;
 
 const list: Variants = {
@@ -33,6 +35,10 @@ function NotificationText({ n }: { n: AppNotification }) {
       return <>{name} accepted your friend request</>;
     case "FRIEND_REMOVED":
       return <>{name} removed you as a friend</>;
+    case "YOU_REMOVED_FRIEND":
+      return <>You removed {name} from your friends</>;
+    case "YOU_ADDED_FRIEND":
+      return <>You and {name} are now friends</>;
   }
 }
 

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -7,158 +7,133 @@ import {
   HiOutlinePaperAirplane,
   HiOutlineSparkles,
   HiOutlineUserGroup,
-  HiOutlineUserMinus,
   HiOutlineUsers,
 } from "react-icons/hi2";
-import ConfirmDialog from "../components/common/ConfirmDialog";
 import EmptyState from "../components/common/EmptyState";
-import RefetchBar from "../components/common/RefetchBar";
 import ErrorState from "../components/common/ErrorState";
+import Panel from "../components/common/Panel";
+import PillTabs from "../components/common/PillTabs";
 import { Skeleton } from "../components/common/Skeleton";
-import Container from "../components/layout/Container";
+import Spinner from "../components/common/Spinner";
+import Page, { GradientText, SPLIT } from "../components/layout/Page";
+import FriendCard from "../features/friends/components/FriendCard";
+import { DiscoverList, RequestsList } from "../features/friends/components/FriendsFinder";
 import PersonCard from "../features/friends/components/PersonCard";
-import RelationButton from "../features/friends/components/RelationButton";
-import RequestActions from "../features/friends/components/RequestActions";
-import {
-  useDeleteFriendRequest,
-  useFriendRequests,
-  useFriends,
-  useUnfriend,
-  useUserSearch,
-} from "../features/friends/hooks";
-import type { Friend } from "../features/friends/types";
-import { useDebounce } from "../hooks/useDebounce";
+import { useDeleteFriendRequest, useFriendRequests, useFriends } from "../features/friends/hooks";
 import { ease } from "../lib/motion";
 import { timeAgo } from "../lib/time";
 import { cn } from "../lib/utils";
 
-const TABS = [
-  { id: "friends", label: "Friends", icon: HiOutlineUserGroup },
-  { id: "requests", label: "Requests", icon: HiOutlineInbox },
-  { id: "sent", label: "Sent", icon: HiOutlinePaperAirplane },
-  { id: "discover", label: "Discover", icon: HiOutlineSparkles },
-] as const;
+type ListTab = "friends" | "sent";
+type FinderTab = "requests" | "discover";
 
-type TabId = (typeof TABS)[number]["id"];
+const GRID = "grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 xl:grid-cols-3";
+const FINDER_SEARCH_ID = "friends-finder-search";
 
-const GRID = "grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+const fade = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -6 },
+  transition: { duration: 0.22, ease },
+};
 
 export default function FriendsPage() {
   const [params, setParams] = useSearchParams();
-  const tab: TabId = TABS.find((t) => t.id === params.get("tab"))?.id ?? "friends";
-  const setTab = (id: TabId) => setParams(id === "friends" ? {} : { tab: id }, { replace: true });
+  const tab: ListTab = params.get("tab") === "sent" ? "sent" : "friends";
+  const setTab = (id: ListTab) => setParams(id === "friends" ? {} : { tab: id }, { replace: true });
+  const [finderTab, setFinderTab] = useState<FinderTab>("discover");
 
   const friends = useFriends();
   const requests = useFriendRequests();
+  const incomingCount = requests.data?.incoming.length;
 
-  const counts: Record<TabId, number | undefined> = {
-    friends: friends.data?.length,
-    requests: requests.data?.incoming.length,
-    sent: requests.data?.outgoing.length,
-    discover: undefined,
+  const requestsRefetching = requests.isFetching && !requests.isPending;
+  const leftLoading = tab === "friends" ? friends.isFetching && !friends.isPending : requestsRefetching;
+  // Left and right share the requests query; show its bar in one place only.
+  const rightLoading = finderTab === "requests" && requestsRefetching && tab !== "sent";
+
+  const findPeople = () => {
+    setFinderTab("discover");
+    setTimeout(() => {
+      const input = document.getElementById(FINDER_SEARCH_ID);
+      input?.scrollIntoView({ behavior: "smooth", block: "center" });
+      input?.focus({ preventScroll: true });
+    }, 50);
   };
 
   return (
-    <Container className="py-10 sm:py-14">
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease }}>
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          Your{" "}
-          <span className="bg-linear-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">people</span>
-        </h1>
-        <p className="mt-2 text-white/50">Add friends, then pull them into a room and listen together.</p>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.6, ease }}
-        className="-mx-4 mt-8 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0"
-      >
-        <div className="inline-flex gap-1 rounded-full border border-white/10 bg-white/3 p-1">
-          {TABS.map(({ id, label, icon: Icon }) => {
-            const active = tab === id;
-            const count = counts[id];
-            return (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className="relative rounded-full px-4 py-2 text-sm whitespace-nowrap"
-              >
-                {active && (
-                  <motion.span
-                    layoutId="friends-tab"
-                    className="absolute inset-0 rounded-full bg-white/10 ring-1 ring-white/10"
-                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                  />
-                )}
-                <span
-                  className={cn(
-                    "relative flex items-center gap-2 transition-colors",
-                    active ? "text-white" : "text-white/50 hover:text-white",
-                  )}
-                >
-                  <Icon className="size-4" />
-                  {label}
-                  {!!count && (
-                    <span
-                      className={cn(
-                        "rounded-full px-1.5 py-0.5 text-[10px] leading-none",
-                        id === "requests" ? "bg-fuchsia-500 text-white" : "bg-white/10 text-white/60",
-                      )}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </motion.div>
-
-      <RefetchBar
-        className="mt-6 max-w-md"
-        active={
-          (tab === "friends" && friends.isFetching && !friends.isPending) ||
-          ((tab === "requests" || tab === "sent") && requests.isFetching && !requests.isPending)
-        }
-      />
-
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={tab}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.25, ease }}
-          className="mt-6"
+    <Page
+      fixed
+      title={<>Your <GradientText>people</GradientText></>}
+      subtitle="Add friends, then pull them into a room and listen together."
+    >
+      <div className={cn(SPLIT, "lg:h-full")}>
+        <Panel
+          delay={0.1}
+          className="lg:col-span-3"
+          loading={leftLoading}
+          header={
+            <PillTabs
+              layoutId="friends-list-tab"
+              value={tab}
+              onChange={setTab}
+              tabs={[
+                { id: "friends", label: "Friends", icon: HiOutlineUserGroup, count: friends.data?.length },
+                { id: "sent", label: "Sent", icon: HiOutlinePaperAirplane, count: requests.data?.outgoing.length },
+              ]}
+            />
+          }
         >
-          {tab === "friends" && <FriendsTab query={friends} onDiscover={() => setTab("discover")} />}
-          {tab === "requests" && <RequestsTab query={requests} />}
-          {tab === "sent" && <SentTab query={requests} onDiscover={() => setTab("discover")} />}
-          {tab === "discover" && <DiscoverTab />}
-        </motion.div>
-      </AnimatePresence>
-    </Container>
+          <AnimatePresence mode="wait">
+            <motion.div key={tab} {...fade} className="p-3 sm:p-4">
+              {tab === "friends" ? (
+                <FriendsTab query={friends} onFindPeople={findPeople} />
+              ) : (
+                <SentTab query={requests} onFindPeople={findPeople} />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </Panel>
+
+        <Panel
+          delay={0.15}
+          className="order-first max-h-120 lg:order-last lg:col-span-2 lg:max-h-none"
+          loading={rightLoading}
+          header={
+            <PillTabs
+              layoutId="friends-finder-tab"
+              value={finderTab}
+              onChange={setFinderTab}
+              tabs={[
+                { id: "requests", label: "Requests", icon: HiOutlineInbox, count: incomingCount, highlight: true },
+                { id: "discover", label: "Discover", icon: HiOutlineSparkles },
+              ]}
+            />
+          }
+        >
+          <motion.div key={finderTab} initial={fade.initial} animate={fade.animate} transition={fade.transition} className="p-2">
+            {finderTab === "requests" ? <RequestsList /> : <DiscoverList searchId={FINDER_SEARCH_ID} />}
+          </motion.div>
+        </Panel>
+      </div>
+    </Page>
   );
 }
 
-function SearchInput({ value, onChange, placeholder, loading }: {
+function SearchInput({ value, onChange, placeholder }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
-  loading?: boolean;
 }) {
   return (
-    <label className="mb-6 flex max-w-md items-center gap-2.5 rounded-2xl border border-white/10 bg-white/3 px-4 transition-colors focus-within:border-violet-500/50 focus-within:bg-white/5">
-      <HiOutlineMagnifyingGlass className="size-4.5 shrink-0 text-white/40" />
+    <label className="mb-3 flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-white/3 px-3 transition-colors focus-within:border-violet-500/50 focus-within:bg-white/5">
+      <HiOutlineMagnifyingGlass className="size-4 shrink-0 text-white/40" />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-white/30"
+        className="h-10 w-full bg-transparent text-sm outline-none placeholder:text-white/30"
       />
-      {loading && <span className="size-4 shrink-0 animate-spin rounded-full border-2 border-white/20 border-t-white/70" />}
     </label>
   );
 }
@@ -166,32 +141,34 @@ function SearchInput({ value, onChange, placeholder, loading }: {
 function CardsSkeleton() {
   return (
     <div className={GRID}>
-      {Array.from({ length: 4 }, (_, i) => (
-        <div key={i} className="flex flex-col items-center rounded-2xl border border-white/10 bg-white/3 p-5">
-          <Skeleton className="size-16 rounded-full" />
-          <Skeleton className="mt-3 h-3.5 w-24" />
-          <Skeleton className="mt-2 h-2.5 w-16" />
-          <Skeleton className="mt-4 h-8 w-24 rounded-full" />
+      {Array.from({ length: 6 }, (_, i) => (
+        <div key={i} className="flex flex-col items-center overflow-hidden rounded-2xl border border-white/10 bg-white/3 pb-2">
+          <div className="h-12 w-full bg-white/3" />
+          <Skeleton className="-mt-7 size-14 rounded-full" />
+          <Skeleton className="mt-2.5 h-3 w-20" />
+          <Skeleton className="mt-1.5 h-2.5 w-14" />
+          <div className="mt-3 flex w-full gap-2 px-2">
+            <Skeleton className="h-8 flex-1 rounded-full" />
+            <Skeleton className="h-8 flex-1 rounded-full" />
+          </div>
         </div>
       ))}
     </div>
   );
 }
 
-const GhostButton = ({ onClick, children }: { onClick: () => void; children: ReactNode }) => (
+const FindPeopleButton = ({ onClick }: { onClick: () => void }) => (
   <motion.button
     whileTap={{ scale: 0.95 }}
     onClick={onClick}
     className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black transition-colors hover:bg-white/90"
   >
-    {children}
+    <HiOutlineSparkles className="size-4" /> Find people
   </motion.button>
 );
 
-function FriendsTab({ query, onDiscover }: { query: ReturnType<typeof useFriends>; onDiscover: () => void }) {
+function FriendsTab({ query, onFindPeople }: { query: ReturnType<typeof useFriends>; onFindPeople: () => void }) {
   const [filter, setFilter] = useState("");
-  const [toRemove, setToRemove] = useState<Friend | null>(null);
-  const unfriend = useUnfriend();
 
   if (query.isPending) return <CardsSkeleton />;
   if (query.isError) return <ErrorState onRetry={() => query.refetch()} />;
@@ -202,7 +179,7 @@ function FriendsTab({ query, onDiscover }: { query: ReturnType<typeof useFriends
         icon={HiOutlineUserGroup}
         title="No friends yet"
         text="Find people you know and send them a request."
-        action={<GhostButton onClick={onDiscover}><HiOutlineSparkles className="size-4" /> Find people</GhostButton>}
+        action={<FindPeopleButton onClick={onFindPeople} />}
       />
     );
   }
@@ -219,69 +196,32 @@ function FriendsTab({ query, onDiscover }: { query: ReturnType<typeof useFriends
         <EmptyState icon={HiOutlineUsers} title={`No friends match "${filter}"`} />
       ) : (
         <div className={GRID}>
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence initial={false}>
             {visible.map((fr, i) => (
-              <PersonCard
-                key={fr.user.id}
-                index={i}
-                user={fr.user}
-                meta={`Friends since ${new Date(fr.since).toLocaleDateString("en", { month: "short", year: "numeric" })}`}
-                corner={
-                  <button
-                    onClick={() => setToRemove(fr)}
-                    aria-label={`Unfriend ${fr.user.name}`}
-                    className="grid size-8 place-items-center rounded-full text-white/40 transition-all hover:bg-red-500/10 hover:text-red-400 sm:opacity-0 sm:group-hover:opacity-100"
-                  >
-                    <HiOutlineUserMinus className="size-4" />
-                  </button>
-                }
-              />
+              <FriendCard key={fr.user.id} friend={fr} index={i} />
             ))}
           </AnimatePresence>
         </div>
       )}
-
-      <ConfirmDialog
-        open={!!toRemove}
-        title={`Unfriend ${toRemove?.user.name ?? ""}?`}
-        description="You can always send them a new request later."
-        confirmLabel="Unfriend"
-        onConfirm={() => toRemove && unfriend.mutate(toRemove.user.id)}
-        onClose={() => setToRemove(null)}
-      />
     </>
   );
 }
 
-function RequestsTab({ query }: { query: ReturnType<typeof useFriendRequests> }) {
-  if (query.isPending) return <CardsSkeleton />;
-  if (query.isError) return <ErrorState onRetry={() => query.refetch()} />;
-  if (query.data.incoming.length === 0) {
-    return (
-      <EmptyState size="lg" icon={HiOutlineInbox} title="No pending requests" text="When someone adds you, it'll pop up here instantly." />
-    );
-  }
-
+function CancelRequestButton({ requestId }: { requestId: string }) {
+  const cancel = useDeleteFriendRequest();
   return (
-    <div className={GRID}>
-      <AnimatePresence mode="popLayout">
-        {query.data.incoming.map((r, i) => (
-          <PersonCard
-            key={r.id}
-            index={i}
-            user={r.user}
-            meta={`Sent ${timeAgo(r.createdAt)}`}
-            actions={<RequestActions request={r} />}
-          />
-        ))}
-      </AnimatePresence>
-    </div>
+    <motion.button
+      whileTap={cancel.isPending ? undefined : { scale: 0.95 }}
+      disabled={cancel.isPending}
+      onClick={() => cancel.mutate(requestId)}
+      className="flex h-8 w-full items-center justify-center rounded-full bg-white/5 px-3 text-xs text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-60"
+    >
+      {cancel.isPending ? <Spinner className="size-3.5" /> : "Cancel"}
+    </motion.button>
   );
 }
 
-function SentTab({ query, onDiscover }: { query: ReturnType<typeof useFriendRequests>; onDiscover: () => void }) {
-  const cancel = useDeleteFriendRequest();
-
+function SentTab({ query, onFindPeople }: { query: ReturnType<typeof useFriendRequests>; onFindPeople: () => void }) {
   if (query.isPending) return <CardsSkeleton />;
   if (query.isError) return <ErrorState onRetry={() => query.refetch()} />;
   if (query.data.outgoing.length === 0) {
@@ -291,66 +231,25 @@ function SentTab({ query, onDiscover }: { query: ReturnType<typeof useFriendRequ
         icon={HiOutlinePaperAirplane}
         title="No sent requests"
         text="Requests you send will wait here until they're accepted."
-        action={<GhostButton onClick={onDiscover}><HiOutlineSparkles className="size-4" /> Find people</GhostButton>}
+        action={<FindPeopleButton onClick={onFindPeople} />}
       />
     );
   }
 
   return (
     <div className={GRID}>
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence initial={false}>
         {query.data.outgoing.map((r, i) => (
           <PersonCard
+            compact
             key={r.id}
             index={i}
             user={r.user}
             meta={`Sent ${timeAgo(r.createdAt)}`}
-            actions={
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => cancel.mutate({ requestId: r.id, userId: r.user.id, incoming: false })}
-                className="h-8 rounded-full bg-white/5 px-4 text-xs text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-400"
-              >
-                Cancel request
-              </motion.button>
-            }
+            footer={<CancelRequestButton requestId={r.id} />}
           />
         ))}
       </AnimatePresence>
     </div>
-  );
-}
-
-function DiscoverTab() {
-  const [query, setQuery] = useState("");
-  const q = useDebounce(query.trim(), 300);
-  const search = useUserSearch(q);
-
-  return (
-    <>
-      <SearchInput
-        value={query}
-        onChange={setQuery}
-        placeholder="Search by name or username"
-        loading={search.isFetching}
-      />
-      <p className="mb-4 text-xs font-medium tracking-wider text-white/40 uppercase">
-        {q ? "Results" : "People you may know"}
-      </p>
-
-      {search.isPending ? (
-        <CardsSkeleton />
-      ) : search.isError ? (
-        <ErrorState onRetry={() => search.refetch()} />
-      ) : search.data.length === 0 ? (
-        <EmptyState size="lg" icon={HiOutlineUsers} title={q ? "No one found" : "No suggestions right now"} text={q ? "Try a different name or username." : "Search for someone by name."} />
-      ) : (
-        <div className={GRID}>
-          {search.data.map((u, i) => (
-            <PersonCard key={u.id} index={i} user={u} actions={<RelationButton user={u} />} />
-          ))}
-        </div>
-      )}
-    </>
   );
 }
