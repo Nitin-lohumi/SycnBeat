@@ -13,7 +13,7 @@ export type PillTab<T extends string> = {
 type Props<T extends string> = {
   tabs: readonly PillTab<NoInfer<T>>[];
   value: T;
-  onChange: (id: T) => void;
+  onChange: (id: NoInfer<T>) => void;
   layoutId: string;
   className?: string;
 };
