@@ -10,8 +10,9 @@ import TrackCover from "./TrackCover";
 export function useMiniPlayerVisible() {
   const track = useCurrentTrack();
   const panels = usePlayer((s) => s.panels);
+  const solo = usePlayer((s) => s.mode === "solo");
   const isDesktop = useIsDesktop();
-  return !!track && !(isDesktop && panels > 0);
+  return solo && !!track && !(isDesktop && panels > 0);
 }
 
 const icon = "grid size-9 shrink-0 place-items-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white";

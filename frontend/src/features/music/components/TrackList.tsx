@@ -11,10 +11,11 @@ type Props = {
   showIndex?: boolean;
   trailing?: (track: Track, index: number) => ReactNode;
   empty?: ReactNode;
+  playable?: boolean;
 };
 
 // Tapping a row plays it and makes this list the queue.
-export default function TrackList({ tracks, loading, showIndex, trailing, empty }: Props) {
+export default function TrackList({ tracks, loading, showIndex, trailing, empty, playable = true }: Props) {
   const playQueue = usePlayer((s) => s.playQueue);
 
   if (loading) return <>{Array.from({ length: 8 }, (_, i) => <TrackRowSkeleton key={i} />)}</>;
@@ -34,7 +35,7 @@ export default function TrackList({ tracks, loading, showIndex, trailing, empty 
             track={track}
             index={i}
             showIndex={showIndex}
-            onPlay={() => playQueue(tracks, i)}
+            onPlay={playable ? () => playQueue(tracks, i) : undefined}
             trailing={trailing?.(track, i)}
           />
         </motion.div>

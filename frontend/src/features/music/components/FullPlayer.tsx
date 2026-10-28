@@ -9,7 +9,8 @@ export default function FullPlayer() {
   const expanded = usePlayer((s) => s.expanded);
   const setExpanded = usePlayer((s) => s.setExpanded);
   const track = useCurrentTrack();
-  const open = expanded && !!track;
+  const solo = usePlayer((s) => s.mode === "solo");
+  const open = expanded && solo && !!track;
   const dragControls = useDragControls();
 
   useEffect(() => {

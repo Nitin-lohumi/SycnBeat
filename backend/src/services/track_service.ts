@@ -50,3 +50,8 @@ export async function resolveTrack(ref: TrackRef) {
   const { ids } = await resolveTracks([ref]);
   return ids.get(trackKey(ref))!;
 }
+
+export async function resolveTrackDTO(ref: TrackRef) {
+  const id = await resolveTrack(ref);
+  return prisma.track.findUniqueOrThrow({ where: { id }, select: trackSelect });
+}

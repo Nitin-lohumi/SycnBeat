@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { HiOutlineChatBubbleOvalLeft, HiOutlineUserMinus } from "react-icons/hi2";
-import { toast } from "sonner";
 import ConfirmDialog from "../../../components/common/ConfirmDialog";
 import Spinner from "../../../components/common/Spinner";
+import { useConversations, useOpenChat } from "../../chat/hooks";
 import { useUnfriend } from "../hooks";
 import type { Friend } from "../types";
 import PersonCard from "./PersonCard";
@@ -11,6 +11,8 @@ import PersonCard from "./PersonCard";
 export default function FriendCard({ friend, index }: { friend: Friend; index: number }) {
   const [confirming, setConfirming] = useState(false);
   const unfriend = useUnfriend();
+  const openChat = useOpenChat();
+  useConversations(); // warms the chat list so "Chat" can open without waiting
   const { user } = friend;
 
   const since = new Date(friend.since).toLocaleDateString("en", { month: "short", year: "numeric" });
@@ -34,13 +36,13 @@ export default function FriendCard({ friend, index }: { friend: Friend; index: n
               Remove
             </motion.button>
 
-            {/* TODO: open the DM thread once 1:1 chat is built */}
             <motion.button
               whileTap={{ scale: 0.94 }}
-              onClick={() => toast("1:1 chat is coming soon 💬")}
-              className="flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-full bg-linear-to-r from-violet-500 to-fuchsia-500 px-2 text-xs font-medium text-white shadow-md shadow-fuchsia-500/20 transition-[filter] hover:brightness-110"
+              disabled={openChat.isPending}
+              onClick={() => openChat.mutate(user.id)}
+              className="flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-full bg-linear-to-r from-violet-500 to-fuchsia-500 px-2 text-xs font-medium text-white shadow-md shadow-fuchsia-500/20 transition-[filter] hover:brightness-110 disabled:opacity-70"
             >
-              <HiOutlineChatBubbleOvalLeft className="size-4 shrink-0" />
+              {openChat.isPending ? <Spinner className="size-3.5" /> : <HiOutlineChatBubbleOvalLeft className="size-4 shrink-0" />}
               Chat
             </motion.button>
           </>

@@ -1,6 +1,16 @@
 import { useEffect } from "react";
 import { motion, type Variants } from "framer-motion";
-import { HiCheck, HiOutlineBell, HiOutlineBellSlash, HiUserMinus, HiUserPlus } from "react-icons/hi2";
+import {
+  HiArrowRightOnRectangle,
+  HiCheck,
+  HiNoSymbol,
+  HiOutlineBell,
+  HiOutlineBellSlash,
+  HiOutlineRadio,
+  HiUserMinus,
+  HiUserPlus,
+} from "react-icons/hi2";
+import InviteActions from "../../rooms/components/InviteActions";
 import EmptyState from "../../../components/common/EmptyState";
 import ErrorState from "../../../components/common/ErrorState";
 import { UserRowSkeleton } from "../../../components/common/Skeleton";
@@ -16,7 +26,17 @@ const TYPE_BADGE = {
   FRIEND_REMOVED: { icon: HiUserMinus, className: "bg-neutral-600" },
   YOU_REMOVED_FRIEND: { icon: HiUserMinus, className: "bg-neutral-600" },
   YOU_ADDED_FRIEND: { icon: HiUserPlus, className: "bg-violet-500" },
+  ROOM_INVITE: { icon: HiOutlineRadio, className: "bg-fuchsia-500" },
+  YOU_LEFT_ROOM: { icon: HiArrowRightOnRectangle, className: "bg-neutral-600" },
+  YOU_WERE_REMOVED_FROM_ROOM: { icon: HiNoSymbol, className: "bg-red-500" },
 } as const;
+
+const INVITE_STATUS: Record<string, string> = {
+  ACCEPTED: "Joined",
+  REJECTED: "Declined",
+  EXPIRED: "Expired",
+  CANCELLED: "Expired",
+};
 
 const list: Variants = {
   hidden: {},
@@ -30,6 +50,7 @@ const item: Variants = {
 
 function NotificationText({ n }: { n: AppNotification }) {
   const name = <span className="font-medium text-white">{n.actor.name}</span>;
+  const room = n.room?.name ?? "a room";
   switch (n.type) {
     case "FRIEND_ACCEPTED":
       return <>{name} accepted your friend request</>;
@@ -39,6 +60,12 @@ function NotificationText({ n }: { n: AppNotification }) {
       return <>You removed {name} from your friends</>;
     case "YOU_ADDED_FRIEND":
       return <>You and {name} are now friends</>;
+    case "ROOM_INVITE":
+      return <>{name} invited you to <span className="font-medium text-white">{room}</span></>;
+    case "YOU_LEFT_ROOM":
+      return <>You left <span className="font-medium text-white">{room}</span></>;
+    case "YOU_WERE_REMOVED_FROM_ROOM":
+      return <>{name} removed you from <span className="font-medium text-white">{room}</span></>;
   }
 }
 
@@ -74,7 +101,7 @@ function NotificationsPanel() {
         ) : notifications.isError ? (
           <ErrorState onRetry={() => notifications.refetch()} />
         ) : notifications.data.length === 0 ? (
-          <EmptyState icon={HiOutlineBellSlash} title="You're all caught up" text="Friend updates will show up here." />
+          <EmptyState icon={HiOutlineBellSlash} title="You're all caught up" text="Friend and room updates will show up here." />
         ) : (
           <motion.div variants={list} initial="hidden" animate="show">
             {notifications.data.map((n) => {
@@ -105,7 +132,17 @@ function NotificationsPanel() {
                     <p className="text-sm text-white/60">
                       <NotificationText n={n} />
                     </p>
-                    <p className="mt-0.5 text-xs text-white/30">{timeAgo(n.createdAt)}</p>
+                    <p className="mt-0.5 text-xs text-white/30">
+                      {timeAgo(n.createdAt)}
+                      {n.type === "ROOM_INVITE" && n.inviteStatus && INVITE_STATUS[n.inviteStatus] && (
+                        <> · {INVITE_STATUS[n.inviteStatus]}</>
+                      )}
+                    </p>
+                    {n.type === "ROOM_INVITE" && n.room && n.inviteStatus === "PENDING" && (
+                      <div className="mt-2">
+                        <InviteActions roomId={n.room.id} />
+                      </div>
+                    )}
                   </div>
 
                   {unread && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-fuchsia-500 shadow-[0_0_8px] shadow-fuchsia-500" />}

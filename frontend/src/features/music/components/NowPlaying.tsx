@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { HiOutlineMusicalNote, HiOutlinePlus } from "react-icons/hi2";
+import { Link } from "react-router-dom";
+import { HiOutlineMusicalNote, HiOutlinePlus, HiOutlineRadio } from "react-icons/hi2";
+import { useRoom } from "../../../store/room";
 import EmptyState from "../../../components/common/EmptyState";
 import Panel from "../../../components/common/Panel";
 import { cn } from "../../../lib/utils";
@@ -21,6 +23,26 @@ export function NowPlayingView({ variant = "panel" }: { variant?: "panel" | "she
   const playQueue = usePlayer((s) => s.playQueue);
   const openAdd = useAddToPlaylistDialog((s) => s.open);
   const sheet = variant === "sheet";
+  const roomMode = usePlayer((s) => s.mode === "room");
+  const roomId = useRoom((s) => s.roomId);
+
+  if (roomMode && roomId) {
+    return (
+      <div className="grid h-full place-items-center p-6">
+        <EmptyState
+          size="lg"
+          icon={HiOutlineRadio}
+          title="You're in a room"
+          text="The room is playing for everyone. Tapping a song here asks if you want to leave."
+          action={
+            <Link to={`/rooms/${roomId}`} className="rounded-full bg-white/8 px-4 py-2 text-sm font-medium transition-colors hover:bg-white/12">
+              Back to room
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
 
   if (!track) {
     return (

@@ -22,12 +22,7 @@ enum InviteStatus {
   ACCEPTED
   REJECTED
   CANCELLED
-}
-
-enum RoomRole {
-  ADMIN
-  DJ
-  LISTENER
+  EXPIRED
 }
 
 enum TrackSource {
@@ -41,6 +36,9 @@ enum NotificationType {
   FRIEND_REMOVED
   YOU_REMOVED_FRIEND
   YOU_ADDED_FRIEND
+  ROOM_INVITE
+  YOU_LEFT_ROOM
+  YOU_WERE_REMOVED_FROM_ROOM
 }
 
 // =====================================================
@@ -115,14 +113,17 @@ model Notification {
   userId    String // kisko dikhegi
   actorId   String // kisne kiya (jaise jisne request accept ki)
   type      NotificationType
+  roomId    String? // set for room notifications
   readAt    DateTime?
   createdAt DateTime         @default(now())
 
-  user  User @relation("NotificationUser", fields: [userId], references: [id], onDelete: Cascade)
-  actor User @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  user  User  @relation("NotificationUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor User  @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  room  Room? @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
+  @@index([roomId])
 }
 
 // =====================================================
@@ -196,34 +197,40 @@ model LikedTrack {
 // ROOM (shared listening)
 // =====================================================
 
+// Live state (now playing, chat, who is online, temp admin) lives in server memory, not here.
 model Room {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
   description String?
   coverUrl    String?
   ownerId     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isLive      Boolean   @default(false)
+  liveAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  owner   User         @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members RoomMember[]
-  invites RoomInvite[]
-  tracks  RoomTrack[]
+  owner         User           @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members       RoomMember[]
+  invites       RoomInvite[]
+  tracks        RoomTrack[]
+  notifications Notification[]
 
   @@index([ownerId])
 }
 
+// The owner has a row too; admin = room.ownerId, abilities are per member.
 model RoomMember {
-  roomId   String
-  userId   String
-  role     RoomRole @default(LISTENER)
-  joinedAt DateTime @default(now())
+  roomId     String
+  userId     String
+  canQueue   Boolean  @default(false)
+  canControl Boolean  @default(false)
+  joinedAt   DateTime @default(now())
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([roomId, userId])
-  @@index([userId]) 
+  @@index([userId])
 }
 
 model RoomInvite {
@@ -231,7 +238,6 @@ model RoomInvite {
   roomId     String
   senderId   String
   receiverId String
-  role       RoomRole     @default(LISTENER) // kis role ke saath bulaya
   status     InviteStatus @default(PENDING)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
@@ -256,6 +262,7 @@ model RoomTrack {
   track   Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
   addedBy User? @relation(fields: [addedById], references: [id], onDelete: SetNull)
 
+  @@unique([roomId, trackId])
   @@index([roomId, position])
 }
 

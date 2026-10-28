@@ -12,9 +12,10 @@ import TrackList from "./TrackList";
 type Props = {
   trailing?: (track: Track, index: number) => ReactNode;
   autoFocus?: boolean;
+  playable?: boolean;
 };
 
-export default function SongSearch({ trailing, autoFocus }: Props) {
+export default function SongSearch({ trailing, autoFocus, playable }: Props) {
   const [query, setQuery] = useState("");
   const q = useDebounce(query.trim(), 350);
   const search = useTrackSearch(q);
@@ -60,6 +61,7 @@ export default function SongSearch({ trailing, autoFocus }: Props) {
             tracks={search.tracks}
             loading={search.isPending}
             trailing={trailing}
+            playable={playable}
             empty={
               <EmptyState icon={HiOutlineMusicalNote} title="No songs found" text="Try another song or artist name." />
             }

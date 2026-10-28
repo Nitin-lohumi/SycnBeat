@@ -10,6 +10,28 @@ export function sortPair(a: string, b: string) {
   return a < b ? { userLowId: a, userHighId: b } : { userLowId: b, userHighId: a };
 }
 
+export async function areFriends(a: string, b: string) {
+  const row = await prisma.friendship.findUnique({
+    where: { userLowId_userHighId: sortPair(a, b) },
+    select: { status: true },
+  });
+  return row?.status === "ACCEPTED";
+}
+
+export async function friendIdsAmong(me: string, ids: string[]) {
+  const rows = await prisma.friendship.findMany({
+    where: {
+      status: "ACCEPTED",
+      OR: [
+        { senderId: me, receiverId: { in: ids } },
+        { receiverId: me, senderId: { in: ids } },
+      ],
+    },
+    select: { senderId: true, receiverId: true },
+  });
+  return rows.map((r) => (r.senderId === me ? r.receiverId : r.senderId));
+}
+
 export async function listFriends(me: string) {
   const rows = await prisma.friendship.findMany({
     where: { status: "ACCEPTED", OR: [{ senderId: me }, { receiverId: me }] },

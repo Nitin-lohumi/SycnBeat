@@ -6,7 +6,7 @@ import { syncSocial } from "../friends/hooks";
 import { syncLibrary } from "../music/hooks";
 import type { FriendRequests } from "../friends/types";
 import { socket } from "./socket";
-import { requestToastId, showFriendRequestToast, showNotificationToast } from "./toasts";
+import { requestToastId, showFriendRequestToast, showNotificationToast, showRoomInviteToast } from "./toasts";
 
 // Socket events are only signals; the server stays the source of truth via refetch.
 export function useRealtime() {
@@ -21,7 +21,7 @@ export function useRealtime() {
       if (connectedBefore) {
         syncSocial(qc);
         syncLibrary(qc);
-        refresh(qk.notifications);
+        refresh(qk.notifications, qk.rooms);
       }
       connectedBefore = true;
     };
@@ -45,6 +45,7 @@ export function useRealtime() {
     socket.on("notification:new", (n) => {
       refresh(qk.counts, qk.notifications);
       if (n.type === "FRIEND_ACCEPTED") showNotificationToast(n);
+      if (n.type === "ROOM_INVITE") showRoomInviteToast(n);
     });
     socket.on("library:changed", () => syncLibrary(qc));
 

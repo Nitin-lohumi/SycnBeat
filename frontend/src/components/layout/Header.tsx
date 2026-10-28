@@ -5,6 +5,7 @@ import { HiBars3 } from "react-icons/hi2";
 import { useMe } from "../../hooks/useAuth";
 import { ease } from "../../lib/motion";
 import { cn } from "../../lib/utils";
+import MessagesButton from "../../features/chat/components/MessagesButton";
 import FriendRequestsMenu from "../../features/friends/components/FriendRequestsMenu";
 import NotificationsMenu from "../../features/notifications/components/NotificationsMenu";
 import Container from "./Container";
@@ -75,6 +76,7 @@ export default function Header() {
           </nav>
 
           <div className="flex items-center justify-end gap-1 sm:gap-2">
+            <MessagesButton />
             <FriendRequestsMenu />
             <NotificationsMenu />
 

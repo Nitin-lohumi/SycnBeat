@@ -13,4 +13,13 @@ export const qk = {
   likedKeys: ["liked-keys"] as const,
   membershipAll: ["membership"] as const,
   membership: (key: string) => ["membership", key] as const,
+  rooms: ["rooms"] as const,
+  room: (id: string) => ["room", id] as const,
+  roomQueue: (id: string) => ["room-queue", id] as const,
+  roomInvitable: (id: string) => ["room-invitable", id] as const,
+  chats: ["chats"] as const,
+  chat: (id: string) => ["chat", id] as const,
+  chatWith: (userId: string) => ["chat-with", userId] as const,
+  chatMessagesAll: ["chat-messages"] as const,
+  chatMessages: (id: string) => ["chat-messages", id] as const,
 };

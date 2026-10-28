@@ -2,7 +2,9 @@ import { createBrowserRouter } from "react-router-dom";
 import App from "./App";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
-import ComingSoon from "./pages/ComingSoon";
+import RoomsPage from "./pages/RoomsPage";
+import RoomPage from "./pages/RoomPage";
+import MessagesPage from "./pages/MessagesPage";
 import FriendsPage from "./pages/FriendsPage";
 import SongsPage from "./pages/SongsPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
@@ -29,8 +31,10 @@ export const router = createBrowserRouter([
               { path: "playlists/liked", element: <LikedSongsPage /> },
               { path: "playlists/:id", element: <PlaylistPage /> },
               { path: "playlists/:id/edit", element: <EditPlaylistPage /> },
-              { path: "rooms", element: <ComingSoon title="Rooms" /> },
+              { path: "rooms", element: <RoomsPage /> },
+              { path: "rooms/:id", element: <RoomPage /> },
               { path: "friends", element: <FriendsPage /> },
+              { path: "messages/:id?", element: <MessagesPage /> },
             ],
           },
         ],

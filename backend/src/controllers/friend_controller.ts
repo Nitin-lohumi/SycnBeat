@@ -8,6 +8,7 @@ import {
   removeFriendRequest,
   sendFriendRequest,
 } from "../services/friend_service";
+import { dropSharedRooms } from "../services/room_service";
 import { parse } from "../utils/validate";
 
 const sendBody = z.object({ userId: z.string().min(1) });
@@ -42,5 +43,6 @@ export async function deleteRequest(req: Request, res: Response) {
 export async function unfriend(req: Request, res: Response) {
   const { userId } = parse(userIdParam, req.params, "Invalid user id");
   await removeFriend(req.userId!, userId);
+  await dropSharedRooms(req.userId!, userId);
   res.status(204).end();
 }

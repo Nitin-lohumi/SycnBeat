@@ -6,6 +6,7 @@ type Props = {
   title: string;
   description?: ReactNode;
   confirmLabel?: string;
+  tone?: "danger" | "primary";
   onConfirm: () => void;
   onClose: () => void;
 };
@@ -15,6 +16,7 @@ export default function ConfirmDialog({
   title,
   description,
   confirmLabel = "Confirm",
+  tone = "danger",
   onConfirm,
   onClose,
 }: Props) {
@@ -60,7 +62,11 @@ export default function ConfirmDialog({
                   onConfirm();
                   onClose();
                 }}
-                className="h-10 flex-1 rounded-xl bg-red-500/90 text-sm font-medium text-white transition-colors hover:bg-red-500"
+                className={
+                  tone === "danger"
+                    ? "h-10 flex-1 rounded-xl bg-red-500/90 text-sm font-medium text-white transition-colors hover:bg-red-500"
+                    : "h-10 flex-1 rounded-xl bg-linear-to-r from-violet-500 to-fuchsia-500 text-sm font-medium text-white transition-[filter] hover:brightness-110"
+                }
               >
                 {confirmLabel}
               </motion.button>

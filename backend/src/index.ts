@@ -11,6 +11,9 @@ import notificationRoutes from "./routes/notification_routes";
 import musicRoutes from "./routes/music_routes";
 import playlistRoutes from "./routes/playlist_routes";
 import likeRoutes from "./routes/like_routes";
+import roomRoutes from "./routes/room_routes";
+import chatRoutes from "./routes/chat_routes";
+import { resetLiveRooms } from "./services/live/presence";
 import { requireAuth } from "./middlewares/auth.middleware";
 import { me } from "./controllers/auth_controller";
 import { initSocket } from "./socket";
@@ -23,7 +26,6 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
-// Public on purpose: <audio> requests may not carry cookies cross-site, and it only redirects.
 app.get("/api/music/stream/:source/:sourceId", stream);
 
 app.use(requireAuth);
@@ -35,11 +37,14 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/music", musicRoutes);
 app.use("/api/playlists", playlistRoutes);
 app.use("/api/likes", likeRoutes);
+app.use("/api/rooms", roomRoutes);
+app.use("/api/chats", chatRoutes);
 
 app.use(errorHandler);
 
-// Express aur Socket.io ek hi HTTP server (same port) share karte hain
 const server = createServer(app);
 initSocket(server);
 
-server.listen(env.PORT, () => console.log(`Server running on ${env.PORT} 🚀`));
+resetLiveRooms()
+  .catch((e) => console.error("[room] reset failed", e))
+  .finally(() => server.listen(env.PORT, () => console.log(`Server running on ${env.PORT} 🚀`)));
