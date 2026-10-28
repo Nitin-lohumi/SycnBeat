@@ -1,13 +1,20 @@
 import { socket, type ClientToServerEvents } from "../realtime/socket";
 import type { AckResult, PlaybackState } from "./types";
 
+type Failure = Extract<AckResult, { ok: false }>;
+
 export class RoomActionError extends Error {
-  constructor(message: string, public code?: "STALE" | "COOLDOWN", public retryIn?: number) {
+  code?: Failure["code"];
+  retryIn?: number;
+
+  constructor(message: string, code?: Failure["code"], retryIn?: number) {
     super(message);
+    this.code = code;
+    this.retryIn = retryIn;
   }
 }
 
-type AckEvent = Exclude<keyof ClientToServerEvents, "time:ping" | "room:typing" | "room:reaction">;
+type AckEvent = Exclude<keyof ClientToServerEvents, "time:ping" | "room:typing" | "room:reaction" | "dm:typing">;
 
 // Emits with an ack and turns `{ ok: false }` or a timeout into a thrown error.
 export async function emitRoom<T = Record<string, unknown>>(
@@ -23,7 +30,10 @@ export async function emitRoom<T = Record<string, unknown>>(
   } catch {
     throw new RoomActionError("Connection problem, please try again");
   }
-  if (!res.ok) throw new RoomActionError(res.error, res.code, res.retryIn);
+  if (!res.ok) {
+    const { error, code, retryIn } = res as Failure;
+    throw new RoomActionError(error, code, retryIn);
+  }
   return res as T;
 }
 
