@@ -10,7 +10,10 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string(),
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
-  CLIENT_URL: z.string(),
+  // Comma-separated, e.g. "http://localhost:5173,https://syncbeat.vercel.app"
+  CLIENT_URL: z
+    .string()
+    .transform((v) => v.split(",").map((u) => u.trim().replace(/\/$/, "")).filter(Boolean)),
   JAMENDO_CLIENT_ID: z.string().min(1),
 });
 

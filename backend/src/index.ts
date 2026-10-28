@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import { env } from "./config/env";
 import { errorHandler } from "./middlewares/error.middleware";
 import authRoutes from "./routes/auth_routes";
@@ -18,13 +19,18 @@ import { requireAuth } from "./middlewares/auth.middleware";
 import { me } from "./controllers/auth_controller";
 import { initSocket } from "./socket";
 import { stream } from "./controllers/music_controller";
+import { keepAlive } from "./utils/keepAlive";
 
 const app = express();
 
+// Render sits behind a proxy; needed so secure cookies and client IPs work.
+app.set("trust proxy", 1);
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
+app.get("/health", (_req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRoutes);
 app.get("/api/music/stream/:source/:sourceId", stream);
 
@@ -47,4 +53,9 @@ initSocket(server);
 
 resetLiveRooms()
   .catch((e) => console.error("[room] reset failed", e))
-  .finally(() => server.listen(env.PORT, () => console.log(`Server running on ${env.PORT} 🚀`)));
+  .finally(() =>
+    server.listen(env.PORT, () => {
+      console.log(`Server running on ${env.PORT} 🚀`);
+      keepAlive();
+    }),
+  );
