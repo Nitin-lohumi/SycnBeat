@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import App from "./App";
 import LoginPage from "./pages/LoginPage";
+import { PrivacyPage, TermsPage } from "./pages/LegalPage";
 import HomePage from "./pages/HomePage";
 import RoomsPage from "./pages/RoomsPage";
 import RoomPage from "./pages/RoomPage";
@@ -40,6 +41,8 @@ export const router = createBrowserRouter([
         ],
       },
       { path: "login", element: <LoginPage /> },
+      { path: "privacy", element: <PrivacyPage /> },
+      { path: "terms", element: <TermsPage /> },
       { path: "*", element: <div>404 Not Found</div> },
     ],
   },
